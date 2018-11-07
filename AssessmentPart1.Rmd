@@ -1,0 +1,95 @@
+```{r Part_1_R_code}
+getwd()
+setwd("N:/GIS/wk3/Rproject_1")
+getwd()
+LondonDataOSK<- read.csv("Qualifications-of-working-age-NVQ.csv")
+
+
+install.packages("maptools")
+install.packages("RColorBrewer")
+install.packages("classInt")
+install.packages("OpenStreetMap")
+install.packages("sp")
+install.packages("rgeos")
+install.packages("tmap")
+install.packages("tmaptools")
+install.packages("sf")
+install.packages("rgdal")
+install.packages("geojsonio")
+install.packages("methods")
+
+library(maptools)
+library(RColorBrewer)
+library(classInt)
+library(OpenStreetMap)
+library(sp)
+library(rgeos)
+library(tmap)
+library(tmaptools)
+library(sf)
+library(rgdal)
+library(geojsonio)
+library(methods)
+library(tidyverse)
+
+EW <- geojson_read("http://geoportal.statistics.gov.uk/datasets/8edafbe3276d4b56aec60991cbddda50_2.geojson", what = "sp")
+LondonMap <- EW[grep("^E09",EW@data$lad15cd),]
+qtm(LondonMap)
+BoroughMapSF <- read_shape("england_lad_2011.shp", as.sf = TRUE)
+BoroughMapSP <- LondonMap
+qtm(BoroughMapSF)
+qtm(BoroughMapSP)
+class(BoroughMapSF)
+class(BoroughMapSP)
+newSF <- st_as_sf(BoroughMapSP)
+print(BoroughMapSP)
+
+BoroughDataMap2 <- BoroughMapSF %>% left_join(LondonDataOSK, by = c("label" = "Code"))
+library(tmap)
+library(tmaptools)
+tmap_mode("plot")
+qtm(BoroughDataMap2,fill = "percent")
+
+install.packages("shinyjs")
+library(shinyjs)
+tmap_mode("view")
+palette_explorer()
+tm_shape(BoroughDataMap2) +
+  tm_polygons("percent",
+        style="fixed",
+        palette="GnBu",
+        midpoint=NA,
+        breaks=c(-Inf, seq(0, 6, by=2),Inf),
+        title="Rate per 100 people")+
+  tm_compass(position = c("left", "bottom"),type = "arrow") + 
+  tm_scale_bar(position = c("left", "bottom")) +
+  tm_layout(title = "NVQ Qualification Of working group aged 16-64", legend.position = c("right", "bottom"))
+```
+
+
+```{r}
+setwd("N:/GIS/wk3/Rproject_1")
+knitr::include_graphics("AssessmentPart1.jpg")
+```
+
+
+
+1.	workflows used to generate both maps and an assessment of the data sources used in their generation
+The ArcMap workflow mainly follows the practical_2. Key steps involve "Feature Class to Feature Class", "Joining boundaries and attributes", "Joins and Relates" and "Labelling". A network between "Jiangsu Main highway" (element type: edge) and "Jiangsu Road Node" (element type: Junction) was built in the ActCatalog. Then, road data was imported and Network Analyst function in ArcToolbox was applied.
+"Calculate and quantify the city spatial connectivity" workflow is more complex. Firstly, use SQL syntax "DestinationID">"OriginID" in the "Select by Attributes" to import the polyline between cities and export it to the geodatabase with the name "city spatial connectivity of Jiangsu Province". Secondly, added field: "Destination_City" and "Origin_City" and compute the fileds by python: a. syntax for "Origin_City":  !Name!.split(" ")[0]
+b. syntax for "Destination_City":!Name!.split(" ")[2].
+Thirdly, add fields: "Origin_GDP","Origin_Population", "Destination_GDP", "Destination_Pop".
+Forthly, join the "population and GDP of Jiangsu Province city.xls" to the attribute table of connectivity. Fifthly, compute the fields in step4. Sixthly, add the field "city connectivity" and use the field calculator to calculate (python syntax: math.sqrt ("Origin_GDP"*"Origin_Population")*math.sqrt("Destination_GDP"*" Destination_Pop")/("City_Distance"*City_Distance"), basing on the urban gravity model formula).
+ 
+Overall, the map clearly demonstrates the analysis and data, reveals preliminary spatial relationship and expands mind. It obviously indicates that the higher the network density, the stronger the city connectivity. However, the legend is a bit hard to interpret. So, "classify the connectivity", namely defining "Strong connectivity" "Weak connectivity", can be further studied, rather than the Jenks in this case. Strictly speaking, uncertainty creeps in the analysis and it can't totally represents the real-world situation, for that the GDP and population data is for 2016 while the road network from OpenStreetMap represents the latest situation. "Labelling City" also worth thinking, for that it is likely to cause a messy map impression. 
+
+The workflow of the simple thematic map produced by R mainly follows the practical_3. "NVQ qualification of working group aged 16-64" was chosen as the variable. "qtm" in tmap package was applied to plot quickly and check whether the data has been read in correctly. It also helps to realize interactive viewing and layout design. 
+Overall, compared with ArcMap, R especially RMarkdown exposes more of the research workflow to the audience. Efforts like "Visualizing the schools in each boroughs" has been tried to indicate the spatial relationship between school spatial densities and NVQ qualifications, though failed. Besides, the downloaded data from London Datastore is incomplete and replaced by the "!" symbol. This can be solved by putting the data into "all other values"  in the "unique values" in ArcMap "Symbology" function. 
+
+2.	the benefits and drawbacks of GUI vs Command line generated maps
+
+Firstly, R studio interface has 4 panes, so it is convenient for users to switch freely, read the map efficiently and it do not interface with each other. For instance, workspace is the clear display of in-memory object. In contrast, the ArcMap interface is relatively messy. 
+Besides, the R studio can accomplish multiple data processing like plotting the data from subset and excel file processing .This is vital to the "urban gravity model" ArcMap workflow, whose "connectivity" attribute table is of massive information worth further studying and visualizing.
+
+Secondly, R can accomplish better visualization effect with the contribution of packages like "tmap" and "tmaptools".However, as to the "NVQ qualification" R map, is the cool interactive mode really necessary? Since interactive mode is always beneficial for better representation of the map with detailed spatial characteristic.
+
